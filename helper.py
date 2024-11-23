@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv, find_dotenv
 import json
 import gradio as gr
+from together import Together
 
 # these expect to find a .env file at the directory above the lesson. 
 # the format for that file is (without the comment)                                                                           
@@ -64,6 +65,7 @@ Ex. (You look north and see...)"""
         messages.append({'role':'user', 'content':action[1]})
     
     messages.append({'role':'user', 'content':message})
+    client = Together(api_key=get_together_api_key())
     model_output = client.chat.completions.create(
         model="meta-llama/Llama-3-70b-chat-hf",
         messages=messages
