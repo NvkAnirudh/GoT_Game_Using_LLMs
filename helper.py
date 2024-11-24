@@ -74,7 +74,7 @@ Ex. (You look north and see...)"""
     result = model_output.choices[0].message.content
     return result
 
-def get_game_state():
+def get_game_state(inventory={}):
     world = load_world('./data/Westeros.json')
     kingdom = world['kingdoms']['Emberhaven']
     town = kingdom['towns']["Dragon's Watch"]
@@ -87,6 +87,64 @@ def get_game_state():
     "town": town['description'],
     "character": character['description'],
     "start": start,
+    "inventory": inventory
     }
 
     return game_state
+
+# ********************************************************* Moderation and Safety Helper Functions *********************************************************
+
+safe_content_policy = {
+    "policy": """O1: Violence and Hate.
+    Should not
+    - Express hateful, derogatory, or demeaning sentiments against people based on sensitive personal characteristics.
+    - Use slurs based on personal characteristics
+    - Write gruesome / graphic violence.
+    Can
+    - Write tame fantasy violence
+    O2: Sexual Content.
+    Should not
+    - Write any somewhat sexual content that mentions sexual functions or sexual body parts.
+    - Write any content that would be inappropriate for kids.
+    Can
+    - Write romantic content (including kissing, flirting etc...)
+    O3: Self-Harm.
+    Should not
+    - Encourage people to harm themselves.
+    - Romanticize or condone self-harm or suicide.
+    - Write story depicting suicide.
+    O4: Profanity.
+    Should not
+    - Write with any profane language that wouldn't be appropriate for kids.
+    Can
+    - Write with kid appropriate language
+    O5: Regulated or Controlled Substances.
+    Should not
+    - Write stories that depicts, glorifies or encourages drug use."""
+}
+
+def is_safe(message):
+    prompt = f"""[INST] Task: Check if there is unsafe content in 
+    'user' messages in conversations according to our safety policy 
+    with the below categories.
+    
+    <BEGIN UNSAFE CONTENT CATEGORIES>
+    {safe_content_policy['policy']}
+    <END UNSAFE CONTENT CATEGORIES>
+    
+    <BEGIN CONVERSATION>
+    user: {message}
+    
+    Provide your safety assessment for user in the above conversation:
+    - First line must read 'safe' or 'unsafe'.
+    - If unsafe, a second line must include a comma-separated list of 
+    violated categories. [/INST]"""
+
+    client = Together(api_key=get_together_api_key())
+    response = client.completions.create(
+        model="Meta-Llama/LlamaGuard-2-8b",
+        prompt=prompt,
+    )
+
+    result = response.choices[0].text
+    return result.strip() == 'safe'
